@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Page Title</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />		
+	</head>
+
+	<body>
+		<h1>Creador Testbench</h1>
+		<p>
+			<textarea id="textoEntrada" name="textoEntrada" cols='80' rows='20' onblur="procesar()" placeholder="Poner primero entradas in y luego salidas out\nDeja un espacio entre el parentesis y la primera entrada">entity selec_16_salidas_con_reg_y_mem_esc_lec is
+entity gestion_2_interrupciones is
+    Port ( reset : in STD_LOGIC;
+           clk_micro : in STD_LOGIC;
+           interrupt_ack : in STD_LOGIC;
+           peticion_int_0 : in STD_LOGIC;
+           peticion_int_1 : in STD_LOGIC;
+           interrupt : out STD_LOGIC;
+           origen_int : out STD_LOGIC);
+end gestion_2_interrupciones;
+			</textarea><br>
+			<button type="button" onclick="selectArea()">Copiar todo</button><br><br>
+			<textarea id="textoSalida" cols='90' rows='40'></textarea>
+		</p>
+		
+	<script>
+		function selectArea(){
+			var textoSalida = document.getElementById('textoSalida');
+			textoSalida.select();
+			document.execCommand("Copy");
+		}
+		
+		function procesar(){
+			var textoEntrada = document.getElementById('textoEntrada').value;
+			var textoSalida = document.getElementById('textoSalida');
+			var textoSinSaltos = textoEntrada.replace(/\n/g, " ");
+			var textoEntradaCortado = textoSinSaltos.split(' ');
+			
+			var nombreComponente = textoEntradaCortado[1];
+			var nombreTest = "test";
+			
+			var entradas = [];
+			var salidas = [];
+			var vector = [];
+			var i_entradas = 0;
+			var i_salidas = 0;
+			var i_vector = 0;
+			//prompt(textoEntradaCortado, "");
+			for (i in textoEntradaCortado){
+
+				if (textoEntradaCortado[i].toLowerCase() == "in"){
+					entradas[i_entradas] = textoEntradaCortado[i-2];
+					i_entradas++;
+ 				} else if (textoEntradaCortado[i].toLowerCase() == "out"){
+					salidas[i_salidas] = textoEntradaCortado[i-2];
+					i_salidas++;
+				} 
+				if(textoEntradaCortado[i].toLowerCase() == "std_logic;" || textoEntradaCortado[i].toLowerCase() == "std_logic);"){
+					vector[i_vector] = 0;
+					i_vector++;
+				} else if(textoEntradaCortado[i].toLowerCase() == "downto"){
+					vector[i_vector] = textoEntradaCortado[i-1];
+					i_vector++;
+				}
+			}
+			//prompt(vector, "");	
+			
+			// Bibliotecas
+			textoSalida.value = "LIBRARY ieee;\nUSE ieee.std_logic_1164.all;\nUSE ieee.numeric_std.all;\nUSE ieee.std_logic_unsigned.all;\n\n";
+			//textoSalida.value = textoEntradaCortado; //Debug
+			
+			// Entity
+			textoSalida.value = textoSalida.value + "ENTITY " + nombreTest + " IS\nEND " + nombreTest + ";\n\nARCHITECTURE behavior OF " + nombreTest + " IS\n\n";
+			
+			//UUT
+			textoSalida.value = textoSalida.value + "-- Component Declaration for the Unit Under Test (UUT)\nCOMPONENT " + nombreComponente + "\n\tPORT ( \n";
+			//Elementos
+			i_vector = 0;
+			for(i_entradas in entradas) {
+				if (vector[i_vector] == 0) {
+					textoSalida.value = textoSalida.value + "\t\t" + entradas[i_entradas] + " : in STD_LOGIC;\n";
+				} else {
+					textoSalida.value = textoSalida.value + "\t\t" + entradas[i_entradas] + " : in STD_LOGIC_VECTOR " + vector[i_vector] + " downto 0);\n";
+				}
+				i_vector++;
+			}
+			for(i_salidas in salidas) {
+				if (vector[i_vector] == 0) {
+					textoSalida.value = textoSalida.value + "\t\t" + salidas[i_salidas] + " : out STD_LOGIC;\n";
+				} else {
+					textoSalida.value = textoSalida.value + "\t\t" + salidas[i_salidas] + " : out STD_LOGIC_VECTOR " + vector[i_vector] + " downto 0);\n";
+				}
+				i_vector++;
+			}	
+			textoSalida.value = textoSalida.value + "\tEND COMPONENT;\n\n\n";	
+			
+			//Inputs/Outputs
+			textoSalida.value = textoSalida.value + "\t-- Inputs\n";
+						i_vector = 0;
+			for(i_entradas in entradas) {
+				if (vector[i_vector] == 0) {
+					textoSalida.value = textoSalida.value + "\tsignal " + entradas[i_entradas] + " : STD_LOGIC := '0';\n";
+				} else {
+					textoSalida.value = textoSalida.value + "\tsignal " + entradas[i_entradas] + " : STD_LOGIC_VECTOR " + vector[i_vector] + " downto 0) :=  (others => '0');\n";
+				}
+				i_vector++;
+			}
+			textoSalida.value = textoSalida.value + "\n\t-- Outputs\n";
+			for(i_salidas in salidas) {
+				if (vector[i_vector] == 0) {
+					textoSalida.value = textoSalida.value + "\t" + salidas[i_salidas] + " : STD_LOGIC;\n";
+				} else {
+					textoSalida.value = textoSalida.value + "\t" + salidas[i_salidas] + " : STD_LOGIC_VECTOR " + vector[i_vector] + " downto 0);\n";
+				}
+				i_vector++;
+			}	
+			
+			//Reloj
+			textoSalida.value = textoSalida.value + "\n\t-- Clock period definitions\n\tconstant clk_period : time := 10 ns;\n\n";
+			
+			//UUT
+			textoSalida.value = textoSalida.value + "BEGIN\n\n\t-- Instantiate the Unit Under Test (UUT)\n\tuut: " + nombreComponente + " PORT MAP (\n";
+			for(i_entradas in entradas) {
+				textoSalida.value = textoSalida.value + "\t\t" + entradas[i_entradas] + " => " + entradas[i_entradas] + ",\n";
+			}
+			for(i_salidas in salidas) {
+				textoSalida.value = textoSalida.value + "\t\t" + salidas[i_salidas] + " => " + salidas[i_salidas] + ",\n";
+			}	
+			textoSalida.value = textoSalida.value + "\t);\n\n";
+			
+			//process Reloj
+			textoSalida.value = textoSalida.value + "\t-- Clock process definitions\n\tclk_process :process\n\tBEGIN\n\t\tclk_micro <= '0';\n\t\twait for clk_period/2;\n\t\tclk_micro <= '1';\n\t\twait for clk_period/2;\n\tend process;\n\n\n";
+			
+			//process
+			textoSalida.value = textoSalida.value + "\t-- Stimulus process\n\tstim_proc: process\n\tBEGIN\n\t\treset <= '1';\n\t\twait for clk_period*4;\n\n\t\treset <= '1';\n\t\twait for clk_period*2;\n";
+			//loop
+			textoSalida.value = textoSalida.value + "\n\tfor i in 0 to 15 loop\n\t\tx <= std_logic_vector(to_unsigned(i,8));\n\t\twait for clk_period*2;\n\tend loop;\n";
+			
+			//seguridad
+			textoSalida.value = textoSalida.value + "\n\tassert (false) report \"Fin simulacion. NO es un error\" severity FAILURE;\n\twait;\n\tend process;\nend;";
+
+			selectArea();
+		}
+	</script>
+	</body>
+</html>
